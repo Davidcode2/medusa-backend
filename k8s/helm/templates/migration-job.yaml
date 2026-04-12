@@ -1,0 +1,36 @@
+{{- if .Values.medusa.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "medusa-backend.fullname" . }}-migration
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: medusa-migration
+    {{- include "medusa-backend.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.syncWaves.migration }}"
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: medusa-migration
+        {{- include "medusa-backend.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: "{{ .Values.medusa.image.repository }}:{{ .Values.medusa.image.tag }}"
+          imagePullPolicy: {{ .Values.medusa.image.pullPolicy }}
+          command: ["yarn", "medusa", "db:migrate"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "medusa-backend.fullname" . }}-env
+            - secretRef:
+                name: {{ include "medusa-backend.fullname" . }}-secrets
+          resources:
+            {{- toYaml .Values.medusa.migration.resources | nindent 12 }}
+{{- end }}

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "medusa-backend.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: medusa
+    {{- include "medusa-backend.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.syncWaves.medusa }}"
+spec:
+  replicas: {{ .Values.medusa.replicas }}
+  selector:
+    matchLabels:
+      app: medusa
+      {{- include "medusa-backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: medusa
+        {{- include "medusa-backend.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: medusa
+          image: "{{ .Values.medusa.image.repository }}:{{ .Values.medusa.image.tag }}"
+          imagePullPolicy: {{ .Values.medusa.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.medusa.service.targetPort }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "medusa-backend.fullname" . }}-env
+            - secretRef:
+                name: {{ include "medusa-backend.fullname" . }}-secrets
+          resources:
+            {{- toYaml .Values.medusa.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.medusa.service.targetPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.medusa.service.targetPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3

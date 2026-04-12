@@ -1,0 +1,83 @@
+name: Build and Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: ${{ github.repository }}
+  REGISTRY: ghcr.io
+
+jobs:
+  check-for-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for relevant changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            src:
+              - 'src/**'
+              - 'medusa-config.ts'
+              - 'package.json'
+              - 'yarn.lock'
+
+  build-and-push:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-and-push.yml
+    needs: check-for-changes
+    if: needs.check-for-changes.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
+    with:
+      image_name: ghcr.io/${{ github.repository }}
+      dockerfile: dockerfile.production
+
+  deploy-app:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.build-and-push.outputs.version }}
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout app-of-apps repo
+        uses: actions/checkout@v4
+        with:
+          repository: davidcode2/app-of-apps
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Update deployment image tag
+        working-directory: gmymf-medusa
+        run: |
+          VERSION=$VERSION
+          sed -i "s|tag: \"[^\"]*\"|tag: \"${VERSION}\"|g" values.yaml
+
+      - name: Commit deployment changes
+        working-directory: gmymf-medusa
+        env:
+          GIT_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git config --global credential.helper store
+          echo "https://x-access-token:${GIT_TOKEN}@github.com" > ~/.git-credentials
+          git add .
+          git commit -m "Deploy gmymf-medusa version ${VERSION}" || echo "No changes to commit"
+          git push

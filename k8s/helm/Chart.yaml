@@ -1,0 +1,12 @@
+apiVersion: v2
+name: medusa-backend
+version: 0.1.0
+appVersion: "0.0.1"
+description: A Helm chart for Medusa Backend with PostgreSQL and Redis
+keywords:
+  - medusa
+  - ecommerce
+  - headless
+home: https://medusajs.com
+sources:
+  - https://github.com/Davidcode2/medusa-backend

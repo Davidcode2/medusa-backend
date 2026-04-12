@@ -1,0 +1,144 @@
+# Default values for medusa-backend
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Medusa application configuration
+medusa:
+  image:
+    repository: ghcr.io/davidcode2/medusa-backend
+    tag: "0.0.1"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 9000
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - host: gmymf-medusa.jakob-lingel.dev
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: gmymf-medusa-tls
+        hosts:
+          - gmymf-medusa.jakob-lingel.dev
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Environment variables
+  env:
+    NODE_ENV: production
+    PORT: "9000"
+    # Database URL will be constructed from postgres secrets
+    # Redis URL will be constructed from redis service
+
+  # Secrets - will be pulled from AWS SSM via External Secrets Operator
+  secrets:
+    jwtSecret: ""
+    cookieSecret: ""
+
+  # Migration job configuration
+  migration:
+    enabled: true
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+  # Seed job configuration
+  seed:
+    enabled: false
+
+# PostgreSQL configuration
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Database configuration
+  database: medusa_store
+  user: postgres
+  # Password will be pulled from AWS SSM
+  existingSecret: ""
+
+# Redis configuration
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  service:
+    type: ClusterIP
+    port: 6379
+
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+# External Secrets Operator configuration
+externalSecrets:
+  enabled: true
+  secretStoreName: aws-parameter-store
+  secretStoreKind: ClusterSecretStore
+  refreshInterval: 6h
+  # AWS SSM parameter paths
+  parameters:
+    jwtSecret: /gmymf-medusa/jwt/secret
+    cookieSecret: /gmymf-medusa/cookie/secret
+    postgresPassword: /gmymf-medusa/db/password
+
+# ArgoCD sync wave annotations
+syncWaves:
+  postgres: "0"
+  redis: "0"
+  secret: "1"
+  migration: "2"
+  medusa: "3"
+  ingress: "4"

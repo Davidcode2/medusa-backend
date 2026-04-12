@@ -1,0 +1,36 @@
+{{- if .Values.medusa.seed.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "medusa-backend.fullname" . }}-seed
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: medusa-seed
+    {{- include "medusa-backend.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.syncWaves.migration }}"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: medusa-seed
+        {{- include "medusa-backend.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: "{{ .Values.medusa.image.repository }}:{{ .Values.medusa.image.tag }}"
+          imagePullPolicy: {{ .Values.medusa.image.pullPolicy }}
+          command: ["yarn", "seed"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "medusa-backend.fullname" . }}-env
+            - secretRef:
+                name: {{ include "medusa-backend.fullname" . }}-secrets
+          resources:
+            {{- toYaml .Values.medusa.migration.resources | nindent 12 }}
+{{- end }}

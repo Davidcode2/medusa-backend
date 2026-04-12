@@ -1,0 +1,43 @@
+{{- if .Values.medusa.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "medusa-backend.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "medusa-backend.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.syncWaves.ingress }}"
+    {{- range $key, $value := .Values.medusa.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  {{- if .Values.medusa.ingress.className }}
+  ingressClassName: {{ .Values.medusa.ingress.className }}
+  {{- end }}
+  {{- if .Values.medusa.ingress.tls }}
+  tls:
+    {{- range .Values.medusa.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.medusa.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "medusa-backend.fullname" $ }}
+                port:
+                  number: {{ $.Values.medusa.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}
