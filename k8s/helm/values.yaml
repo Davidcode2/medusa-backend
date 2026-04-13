@@ -54,7 +54,7 @@ medusa:
 
   # Migration job configuration
   migration:
-    enabled: false
+    enabled: true
     resources:
       requests:
         memory: "256Mi"
