@@ -122,18 +122,6 @@ redis:
       memory: "128Mi"
       cpu: "100m"
 
-# External Secrets Operator configuration
-externalSecrets:
-  enabled: true
-  secretStoreName: aws-parameter-store
-  secretStoreKind: ClusterSecretStore
-  refreshInterval: 6h
-  # AWS SSM parameter paths
-  parameters:
-    jwtSecret: /gmymf-medusa/jwt/secret
-    cookieSecret: /gmymf-medusa/cookie/secret
-    postgresPassword: /gmymf-medusa/db/password
-
 # ArgoCD sync wave annotations
 syncWaves:
   secret: "0"
