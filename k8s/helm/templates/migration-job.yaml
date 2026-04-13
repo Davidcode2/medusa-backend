@@ -25,7 +25,7 @@ spec:
         - name: migration
           image: "{{ .Values.medusa.image.repository }}:{{ .Values.medusa.image.tag }}"
           imagePullPolicy: {{ .Values.medusa.image.pullPolicy }}
-          command: ["yarn", "medusa", "db:migrate"]
+          command: ["node", "scripts/run-migrations.js"]
           envFrom:
             - configMapRef:
                 name: {{ include "medusa-backend.fullname" . }}-env
