@@ -154,3 +154,4 @@ Required secrets (via ESO/AWS SSM):
 
 MIT
 # Trigger workflow
+# Build trigger: 2026-04-13
