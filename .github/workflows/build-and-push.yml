@@ -22,7 +22,7 @@ on:
         value: ${{ jobs.build-and-push.outputs.version }}
 
 env:
-  REGISTRY: ghcr
+  REGISTRY: ghcr.io
 
 jobs:
   build-and-push:
