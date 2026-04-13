@@ -128,10 +128,10 @@ jobs:
       - name: Update Helm values image tag
         working-directory: k8s/helm
         run: |
-          # Update the image tag in values.yaml
-          sed -i "s/tag: \".*\"/tag: \"${VERSION}\"/g" values.yaml
-          echo "Updated image tag to ${VERSION}"
-          cat values.yaml | grep -A2 "image:"
+          # Update only the medusa image tag (first occurrence after "medusa:")
+          sed -i '0,/tag: ".*"/s//tag: "'"${VERSION}"'"/' values.yaml
+          echo "Updated medusa image tag to ${VERSION}"
+          cat values.yaml | grep -A2 "medusa:"
 
       - name: Commit and push deployment changes
         working-directory: k8s/helm
