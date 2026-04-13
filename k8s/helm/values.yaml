@@ -125,8 +125,9 @@ redis:
 # ArgoCD sync wave annotations
 syncWaves:
   secret: "0"
-  postgres: "1"
-  redis: "1"
-  migration: "2"
-  medusa: "3"
-  ingress: "4"
+  postgresPVC: "1"
+  postgres: "2"
+  redis: "2"
+  migration: "3"
+  medusa: "4"
+  ingress: "5"
