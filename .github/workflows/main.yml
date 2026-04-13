@@ -10,10 +10,6 @@ env:
   # Repository configuration
   GITHUB_OWNER: Davidcode2
   APP_REPO_NAME: medusa-backend
-  APP_OF_APPS_REPO: app-of-apps
-
-  # Deployment configuration
-  DEPLOYMENT_DIR: gmymf-medusa
 
   # Build configuration
   DOCKERFILE: dockerfile.production
@@ -66,7 +62,7 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ env.GITHUB_OWNER }}
-          repositories: ${{ env.APP_REPO_NAME }},${{ env.APP_OF_APPS_REPO }}
+          repositories: ${{ env.APP_REPO_NAME }}
 
       - name: Checkout code
         uses: actions/checkout@v6.0.2
@@ -109,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [bump-version, build-and-push]
     permissions:
-      contents: read
+      contents: write
     env:
       VERSION: ${{ needs.bump-version.outputs.version }}
 
@@ -121,28 +117,28 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ env.GITHUB_OWNER }}
-          repositories: ${{ env.APP_OF_APPS_REPO }}
+          repositories: ${{ env.APP_REPO_NAME }}
 
-      - name: Checkout app-of-apps repo
+      - name: Checkout medusa-backend repo
         uses: actions/checkout@v6.0.2
         with:
-          repository: ${{ env.GITHUB_OWNER }}/${{ env.APP_OF_APPS_REPO }}
+          repository: ${{ env.GITHUB_OWNER }}/${{ env.APP_REPO_NAME }}
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Update deployment image tag
-        working-directory: ${{ env.DEPLOYMENT_DIR }}
+      - name: Update Helm values image tag
+        working-directory: k8s/helm
         run: |
-          OWNER_LC=$(echo "${{ env.GITHUB_OWNER }}" | tr '[:upper:]' '[:lower:]')
-          REPO_LC=$(echo "${{ env.APP_REPO_NAME }}" | tr '[:upper:]' '[:lower:]')
-          sed -i "s|image: ghcr.io/${OWNER_LC}/${REPO_LC}:.*|image: ghcr.io/${OWNER_LC}/${REPO_LC}:${VERSION}|g" medusa-deployment.yaml
+          # Update the image tag in values.yaml
+          sed -i "s/tag: \".*\"/tag: \"${VERSION}\"/g" values.yaml
           echo "Updated image tag to ${VERSION}"
+          cat values.yaml | grep -A2 "image:"
 
       - name: Commit and push deployment changes
-        working-directory: ${{ env.DEPLOYMENT_DIR }}
+        working-directory: k8s/helm
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git diff --exit-code && echo "No changes to commit" && exit 0
-          git add .
-          git commit -m "deploy: ${{ env.APP_REPO_NAME }} v${VERSION}"
+          git add values.yaml
+          git commit -m "deploy: update image tag to v${VERSION}"
           git push
