@@ -12,7 +12,6 @@ RUN apk add --no-cache python3 make g++
 # Copy package files
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY .yarn/releases .yarn/releases
-COPY .yarn/install-state.gz .yarn/install-state.gz
 
 # Install dependencies
 RUN yarn install --immutable
@@ -28,15 +27,21 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Copy built application from builder
-COPY --from=builder /app/.medusa ./.medusa
-COPY --from=builder /app/medusa-config.ts ./
-COPY --from=builder /app/tsconfig.json ./
-COPY --from=builder /app/src ./src
+# Copy compiled application from .medusa/server (for running the app)
+COPY --from=builder /app/.medusa/server/medusa-config.js ./medusa-config.js
+COPY --from=builder /app/.medusa/server/src ./src
+COPY --from=builder /app/.medusa/server/package.json ./package.json
+
+# Copy source TypeScript files and configs needed for migrations
+COPY --from=builder /app/medusa-config.ts ./medusa-config.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/src ./src-ts
+
+# Copy full node_modules (including devDependencies) needed for TypeScript compilation
+# medusa db:migrate compiles TypeScript at runtime
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/yarn.lock ./
-COPY --from=builder /app/.yarnrc.yml ./
+COPY --from=builder /app/yarn.lock ./yarn.lock
+COPY --from=builder /app/.yarnrc.yml ./.yarnrc.yml
 COPY --from=builder /app/.yarn ./.yarn
 
 # Create non-root user for security
@@ -54,5 +59,5 @@ EXPOSE 9000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:9000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start the production server
-CMD ["yarn", "start"]
+# Start the production server using compiled code
+CMD ["node", "src/main.js"]
