@@ -141,4 +141,5 @@ jobs:
           git diff --exit-code && echo "No changes to commit" && exit 0
           git add values.yaml
           git commit -m "deploy: update image tag to v${VERSION}"
+          git pull --rebase origin main
           git push
