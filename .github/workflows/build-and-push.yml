@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Reusable Docker Build and Push
 
 on:
   workflow_call:
@@ -12,82 +12,66 @@ on:
       build_args:
         required: false
         type: string
-        default: ""
+      ref:
+        required: false
+        type: string
+        description: "Git ref to checkout (defaults to triggering commit)"
     outputs:
       version:
-        description: "The version tag of the built image"
-        value: ${{ jobs.build.outputs.version }}
+        description: "Version extracted from package.json"
+        value: ${{ jobs.build-and-push.outputs.version }}
+
+env:
+  REGISTRY: ghcr
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pkg.outputs.version }}
     permissions:
       contents: read
       packages: write
-    outputs:
-      version: ${{ steps.version.outputs.version }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Get version from package.json
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
-
-      - name: Convert image name to lowercase
-        id: image
-        run: |
-          IMAGE_NAME="${{ inputs.image_name }}"
-          echo "name=${IMAGE_NAME,,}" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Checkout code
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4.0.0
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Read version from package.json
+        id: pkg
+        run: echo "version=$(cat package.json | jq -r .version)" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6.0.0
+        with:
+          images: ${{ inputs.image_name }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,enable=true
+            type=raw,value=${{ steps.pkg.outputs.version }}
+
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7.0.0
         with:
           context: .
           file: ${{ inputs.dockerfile }}
           push: true
-          tags: |
-            ${{ steps.image.outputs.name }}:${{ steps.version.outputs.version }}
-            ${{ steps.image.outputs.name }}:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: ${{ inputs.build_args }}
-
-      - name: Setup Yarn
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Update package.json version
-        run: |
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-            const parts = pkg.version.split('.');
-            parts[2] = parseInt(parts[2]) + 1;
-            pkg.version = parts.join('.');
-            fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
-            console.log('Version bumped to:', pkg.version);
-          "
-
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add package.json
-          git commit -m "Bump version to $(node -p "require('./package.json').version")" || echo "No changes to commit"
-          git push
+          build-args: |
+            ${{ inputs.build_args }}
