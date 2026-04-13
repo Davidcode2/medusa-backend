@@ -136,9 +136,9 @@ externalSecrets:
 
 # ArgoCD sync wave annotations
 syncWaves:
-  postgres: "0"
-  redis: "0"
-  secret: "1"
+  secret: "0"
+  postgres: "1"
+  redis: "1"
   migration: "2"
   medusa: "3"
   ingress: "4"
