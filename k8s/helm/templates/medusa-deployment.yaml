@@ -31,6 +31,12 @@ spec:
                 name: {{ include "medusa-backend.fullname" . }}-env
             - secretRef:
                 name: {{ include "medusa-backend.fullname" . }}-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "medusa-backend.fullname" . }}-secrets
+                  key: DATABASE_URL
           resources:
             {{- toYaml .Values.medusa.resources | nindent 12 }}
           livenessProbe:

@@ -8,7 +8,6 @@ metadata:
 data:
   NODE_ENV: {{ .Values.medusa.env.NODE_ENV | quote }}
   PORT: {{ .Values.medusa.env.PORT | quote }}
-  DATABASE_URL: {{ include "medusa-backend.databaseUrl" . }}
   REDIS_URL: {{ include "medusa-backend.redisUrl" . }}
   STORE_CORS: {{ .Values.medusa.env.STORE_CORS | default "https://docs.medusajs.com" | quote }}
   ADMIN_CORS: {{ .Values.medusa.env.ADMIN_CORS | default "https://docs.medusajs.com" | quote }}
