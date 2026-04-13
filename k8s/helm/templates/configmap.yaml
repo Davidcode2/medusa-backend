@@ -3,6 +3,8 @@ kind: ConfigMap
 metadata:
   name: {{ include "medusa-backend.fullname" . }}-env
   namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 data:
   NODE_ENV: {{ .Values.medusa.env.NODE_ENV | quote }}
   PORT: {{ .Values.medusa.env.PORT | quote }}
