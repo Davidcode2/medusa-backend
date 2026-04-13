@@ -133,3 +133,4 @@ export default defineMiddlewares({
 ```
 
 The `matcher` property can be either a string or a regular expression. The `middlewares` property accepts an array of middleware functions.
+
