@@ -44,6 +44,7 @@ medusa:
   env:
     NODE_ENV: production
     PORT: "9000"
+    STORE_CORS: "https://gmymf.com,https://gmymf.jakob-lingel.dev"
     # Database URL will be constructed from postgres secrets
     # Redis URL will be constructed from redis service
 
